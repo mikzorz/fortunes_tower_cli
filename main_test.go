@@ -1,209 +1,336 @@
 package main
 
 import (
-  "fmt"
-  _ "strings"
-  "testing"
+	"fmt"
+	_ "strings"
+	"testing"
 )
 
-func TestNewGame (t *testing.T) {
-  // When a new game is created, check contents of deck and tower
-  g := Game{}
-  g.New()
+func TestNewGame(t *testing.T) {
+	// When a new game is created, check contents of deck and tower
+	g := Game{}
+	g.New()
 
-  // deck is a []int
-  // counts is a map[int]int
-  // tower is [][]int
+	// deck is a []int
+	// counts is a map[int]int
+	// tower is [][]int
 
-  t.Run("g.counts should not be nil", func(t *testing.T) {
-    if g.counts == nil {
-      t.Fatalf("Game.New() did not create a map of card counts")
-    }
-  })
+	t.Run("g.counts should not be nil", func(t *testing.T) {
+		if g.counts == nil {
+			t.Fatalf("Game.New() did not create a map of card counts")
+		}
+	})
 
-  t.Run("deck should contain 4 hero cards", func(t *testing.T) {
-    deckCount := 0
-    for _, v := range g.deck {
-      if v == 0 {
-        deckCount++
-      }
-    }
-    c, ok := g.counts[0]
-    if !ok {
-      t.Fatalf("card with value %d should exist in g.counts but doesn't", 0)
-    }
+	t.Run("deck should contain 4 hero cards", func(t *testing.T) {
+		deckCount := 0
+		for _, v := range g.deck {
+			if v == 0 {
+				deckCount++
+			}
+		}
+		c, ok := g.counts[0]
+		if !ok {
+			t.Fatalf("card with value %d should exist in g.counts but doesn't", 0)
+		}
 
-    if c != 4 || deckCount != 4 {
-      t.Errorf("wrong amount of hero cards, want 4, got %d", c)
-    }
-  })
+		if c != 4 || deckCount != 4 {
+			t.Errorf("wrong amount of hero cards, want 4, got %d", c)
+		}
+	})
 
-  t.Run("deck should contain 8 copies of 1-7", func(t *testing.T) {
-    for i := 1; i <= 7; i++ {
-      deckCount := 0
-      for _, v := range g.deck {
-        if v == i {
-          deckCount++
-        }
-      }
-      c, ok := g.counts[i]
-      if !ok {
-        t.Fatalf("card with value %d should exist in g.counts but doesn't", i)
-      }
+	t.Run("deck should contain 8 copies of 1-7", func(t *testing.T) {
+		for i := 1; i <= 7; i++ {
+			deckCount := 0
+			for _, v := range g.deck {
+				if v == i {
+					deckCount++
+				}
+			}
+			c, ok := g.counts[i]
+			if !ok {
+				t.Fatalf("card with value %d should exist in g.counts but doesn't", i)
+			}
 
-      if c != 8 {
-        t.Errorf("wrong amount of %d-value cards in g.counts, want 8, got %d", i, c)
-      }
-      if deckCount != 8 {
-        t.Errorf("wrong amount of %d-value cards in g.deck, want 8, got %d", i, c)
-      }
-    }
-  })
+			if c != 8 {
+				t.Errorf("wrong amount of %d-value cards in g.counts, want 8, got %d", i, c)
+			}
+			if deckCount != 8 {
+				t.Errorf("wrong amount of %d-value cards in g.deck, want 8, got %d", i, c)
+			}
+		}
+	})
 
-  t.Run("tower should not be nil", func(t *testing.T) {
-    if g.tower == nil {
-      t.Fatalf("Game.New() did not create a tower")
-    }
-  })
+	t.Run("tower should not be nil", func(t *testing.T) {
+		if g.tower == nil {
+			t.Fatalf("Game.New() did not create a tower")
+		}
+	})
 
-  t.Run("tower should be empty", func(t *testing.T) {
-    for _, row := range g.tower {
-      if len(row) != 0 {
-        t.Fatalf("row %d of tower should be empty, contains %d cards", row, len(row))
-      }
+	t.Run("tower should be empty", func(t *testing.T) {
+		for _, row := range g.tower {
+			if len(row) != 0 {
+				t.Fatalf("row %d of tower should be empty, contains %d cards", row, len(row))
+			}
+		}
+	})
+
+  t.Run("state should be StateBetting", func(t *testing.T) {
+    if g.State() != StateBetting {
+      t.Fatalf("state should be %d, got %d", g.State(), StateBetting)
     }
   })
 }
 
-func TestDealing (t *testing.T) {
-  g := Game{}
-  g.New()
+func TestDealing(t *testing.T) {
 
-  dealt := make(map[int]int)
+	dealt := make(map[int]int)
 
-  // Keep track of how many of each card have been dealt.
-  countRow := func(row int) {
-    for _, v := range g.tower[row] {
-      dealt[v]++
-    } 
-  }
+	// Keep track of how many of each card have been dealt.
+	countRow := func(g Game, row int) {
+		for _, v := range g.tower[row] {
+			dealt[v]++
+		}
+	}
 
-  // Check that the deck contains the right amount of each card.
-  assertCounts := func(t *testing.T, g Game) {
-    t.Helper()
-    for v, count := range dealt {
-      startCount := 8
-      if v == 0 {
-        // Hero card
-        startCount = 4
-      }
-      want := startCount - count
-      got := g.counts[v]
-      if got != want {
-        t.Fatalf("deck has wrong amount of cards of value %d, want %d, got %d", v, want, got)
-      }
+	// Check that the deck contains the right amount of each card.
+	assertCounts := func(t *testing.T, g Game) {
+		t.Helper()
+		for v, count := range dealt {
+			startCount := 8
+			if v == 0 {
+				// Hero card
+				startCount = 4
+			}
+			want := startCount - count
+			got := g.counts[v]
+			if got != want {
+				t.Fatalf("deck has wrong amount of cards of value %d, want %d, got %d", v, want, got)
+			}
+		}
+	}
+
+	// Deal the whole 36 card tower (ignore burned cards for now)
+	t.Run("Deal whole tower and check counts", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+		for i := 0; i < 8; i++ {
+			g.Deal()
+			countRow(g, i)
+		}
+		assertCounts(t, g)
+
+		wantedNumOfCardsDealt := 0
+		numOfCardsDealt := 0
+		for i := 0; i < 8; i++ {
+			numOfCardsDealt += len(g.tower[i])
+			wantedNumOfCardsDealt += i + 1
+		}
+
+		if wantedNumOfCardsDealt != numOfCardsDealt {
+			t.Fatalf("Wrong amount of cards dealt, want %d, got %d", wantedNumOfCardsDealt, numOfCardsDealt)
+		}
+
+		if len(g.deck) != 60-wantedNumOfCardsDealt {
+			t.Fatalf("Wrong amount of cards left in deck, want %d, got %d", 60-wantedNumOfCardsDealt, len(g.deck))
+		}
+	})
+
+  t.Run("dealing should change state to StatePlaying", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+    g.Deal()
+
+    if g.State() != StatePlaying {
+      t.Fatalf("state is %d, should be %d", g.State(), StatePlaying)
     }
-  }
+  })
 
-  // Deal the whole 36 card tower (ignore burned cards for now)
-  t.Run("Deal whole tower and check counts", func(t *testing.T) {
+  t.Run("first deal should subtract wager", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+    balBefore := g.Balance()
+    g.Deal()
+    balAfter := g.Balance()
+
+    if balAfter != balBefore - g.GetWager() {
+      t.Errorf("wager not subtracted, got %d, want %d", balAfter, balBefore - g.GetWager())
+    }
+  })
+}
+
+func TestCashOut(t *testing.T) {
+	t.Run("balance increases by last row value", func(t *testing.T) {
+		g := Game{}
+		g.New()
+		g.deck[1], g.deck[2] = 1, 1
+
+		g.Deal()
+		g.Deal()
+
+    balBeforeCashOut := g.Balance()
+		rowVal := 2
+
+		g.CashOut()
+
+    want := balBeforeCashOut + rowVal
+		if g.Balance() != want {
+			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
+		}
+	})
+
+	t.Run("round should end and return to betting state", func(t *testing.T) {
+		g := Game{}
+		g.New()
+		// Play a few rows
+		g.Deal()
+		g.Deal()
+		g.Deal()
+		// Cash out and return to betting state
+		g.CashOut()
+
+    if g.State() != StateBetting {
+      t.Fatalf("cashing out should return state to betting, got %v", g.State())
+    }
+	})
+
+  t.Run("round should stop and cash out after row 8 is played", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
     for i := 0; i < 8; i++ {
       g.Deal()
-      countRow(i)
-    }
-    assertCounts(t, g)
-
-    wantedNumOfCardsDealt := 0
-    numOfCardsDealt := 0
-    for i := 0; i < 8; i++ {
-      numOfCardsDealt += len(g.tower[i])
-      wantedNumOfCardsDealt += i+1
     }
 
-    if wantedNumOfCardsDealt != numOfCardsDealt {
-      t.Fatalf("Wrong amount of cards dealt, want %d, got %d", wantedNumOfCardsDealt, numOfCardsDealt)
+    defer func() {
+      if r := recover(); r != nil {
+        t.Errorf("should not try to deal 9th row")
+      }
+    }()
+
+    g.Deal()
+
+    if g.State() != StateBetting {
+      t.Errorf("want state %d, got %d", StateBetting, g.State())
     }
-    
-    if len(g.deck) != 60 - wantedNumOfCardsDealt {
-      t.Fatalf("Wrong amount of cards left in deck, want %d, got %d", 60 - wantedNumOfCardsDealt, len(g.deck))
+  })
+
+  t.Run("CashOut() should do nothing if current row is 0", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+    defer func() {
+      if r := recover(); r != nil {
+        t.Fatalf("cashing out when tower is empty causes panic")
+      }
+    }()
+
+    g.CashOut()
+  })
+
+  t.Run("cashing out should reset deck, counts and tower", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+    for i:=0;i<4;i++{
+      g.Deal()
+    }
+
+    g.CashOut()
+
+    if len(g.deck) != 60 {
+      t.Error("deck was not reset")
+    }
+
+    if g.counts[0] != 4 {
+      t.Error("counts were not reset")
+    } else {
+      for v := 1; v <= 7; v++ {
+        if g.counts[v] != 8 {
+          t.Error("counts were not reset")
+          break
+        }
+      }
+    }
+
+    for r := 0; r < 8; r++ {
+      if len(g.tower[r]) > 0 {
+        t.Error("tower was not reset")
+        break
+      }
+    }
+  })
+
+  t.Run("set current row to 0", func(t *testing.T) {
+    g := Game{}
+    g.New()
+
+    g.Deal()
+    g.CashOut()
+
+    if g.curRow != 0 {
+      t.Fatalf("g.curRow wasn't reset to 0")
     }
   })
 }
 
-func TestCashOut (t *testing.T) {
-  g := Game{}
-  g.New()
-  g.deck[1], g.deck[2] = 1, 1
+// These tests are retesting other functionality instead of just testing input. Increase complexity for purer tests?
+func TestInput(t *testing.T) {
 
-  g.Deal()
-  g.Deal()
+	t.Run("at game start, z deals first two rows", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-  rowVal := 2
+		in := "z"
+		g.Input(in)
 
-  g.CashOut()
+		if len(g.tower[0]) != 1 {
+			t.Error("gate card should have been dealt")
+		}
+		if len(g.tower[1]) != 2 {
+			t.Error("2nd row should have been dealt")
+		}
 
-  if g.Balance() != rowVal {
-    t.Errorf("balance after cashing out should be %d, got %d", rowVal, g.Balance())
-  }
-}
+		for deal := 2; deal <= 7; deal++ {
+			t.Run(fmt.Sprintf("deal %d should only deal one row", deal), func(t *testing.T) {
+				g.Input(in)
 
-func TestInput (t *testing.T) {
+				if len(g.tower[deal]) != deal+1 {
+					t.Errorf("row %d should have been dealt", deal)
+				}
 
-  t.Run("at game start, z deals first two rows", func (t *testing.T) {
-    g := Game{}
-    g.New()
-  
-    // in := strings.NewReader("z\n")
-    in := "z"
-    g.Input(in)
+				if deal < 7 {
+					if len(g.tower[deal+1]) != 0 {
+						t.Errorf("row %d should not have been dealt", deal)
+					}
+				}
+			})
+		}
+	})
 
-    if len(g.tower[0]) != 1 {
-      t.Error("gate card should have been dealt")
-    }
-    if len(g.tower[1]) != 2 {
-      t.Error("2nd row should have been dealt")
-    }
+	t.Run("after first deal, x cashes out", func(t *testing.T) {
+		g := Game{}
+		g.New()
+		g.balance = 0
 
-    for deal := 2; deal <= 7; deal++ {
-      t.Run(fmt.Sprintf("deal %d should only deal one row", deal), func (t *testing.T) {
-        g.Input(in)
+		g.Deal()
+		g.Deal()
 
-        if len(g.tower[deal]) != deal+1 {
-          t.Errorf("row %d should have been dealt", deal)
-        }
-        
-        if deal < 7 {
-          if len(g.tower[deal+1]) != 0 {
-            t.Errorf("row %d should not have been dealt", deal)
-          }
-        }
-      })
-    }
-  })
+		rowVal := 0
+		for _, v := range g.tower[1] {
+			rowVal += v
+		}
 
-  t.Run("after first deal, x cashes out", func (t *testing.T) {
-    g := Game{}
-    g.New()
-    g.balance = 0
+    balBeforeCashOut := g.Balance()
 
-    g.Deal()
-    g.Deal()
+		in := "x"
+		g.Input(in)
 
-    rowVal := 0
-    for _, v := range g.tower[1] {
-      rowVal += v
-    }
-
-    // in := strings.NewReader("x\n")
-    in := "x"
-    g.Input(in)
-
-    if g.Balance() != rowVal {
-      t.Errorf("balance after cashing out should be %d, got %d", rowVal, g.Balance())
-    }
-  })
-
-  t.Run("x does nothing if no cards have been dealt", func (t *testing.T) {
-    t.Fail()
-  })
+    want := balBeforeCashOut + rowVal
+		if g.Balance() != want {
+			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
+		}
+	})
 }
