@@ -74,11 +74,11 @@ func TestNewGame(t *testing.T) {
 		}
 	})
 
-  t.Run("state should be StateBetting", func(t *testing.T) {
-    if g.State() != StateBetting {
-      t.Fatalf("state should be %d, got %d", g.State(), StateBetting)
-    }
-  })
+	t.Run("state should be StateBetting", func(t *testing.T) {
+		if g.State() != StateBetting {
+			t.Fatalf("state should be %d, got %d", g.State(), StateBetting)
+		}
+	})
 }
 
 func TestDealing(t *testing.T) {
@@ -111,8 +111,10 @@ func TestDealing(t *testing.T) {
 
 	// Deal the whole 36 card tower (ignore burned cards for now)
 	t.Run("Deal whole tower and check counts", func(t *testing.T) {
-    g := Game{}
-    g.New()
+		g := Game{}
+		g.New()
+
+		g.deck = safeDeck()
 
 		for i := 0; i < 8; i++ {
 			g.Deal()
@@ -136,29 +138,29 @@ func TestDealing(t *testing.T) {
 		}
 	})
 
-  t.Run("dealing should change state to StatePlaying", func(t *testing.T) {
-    g := Game{}
-    g.New()
+	t.Run("dealing should change state to StatePlaying", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    g.Deal()
+		g.Deal()
 
-    if g.State() != StatePlaying {
-      t.Fatalf("state is %d, should be %d", g.State(), StatePlaying)
-    }
-  })
+		if g.State() != StatePlaying {
+			t.Fatalf("state is %d, should be %d", g.State(), StatePlaying)
+		}
+	})
 
-  t.Run("first deal should subtract wager", func(t *testing.T) {
-    g := Game{}
-    g.New()
+	t.Run("first deal should subtract wager", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    balBefore := g.Balance()
-    g.Deal()
-    balAfter := g.Balance()
+		balBefore := g.Balance()
+		g.Deal()
+		balAfter := g.Balance()
 
-    if balAfter != balBefore - g.GetWager() {
-      t.Errorf("wager not subtracted, got %d, want %d", balAfter, balBefore - g.GetWager())
-    }
-  })
+		if balAfter != balBefore-g.GetWager() {
+			t.Errorf("wager not subtracted, got %d, want %d", balAfter, balBefore-g.GetWager())
+		}
+	})
 }
 
 func TestCashOut(t *testing.T) {
@@ -167,15 +169,14 @@ func TestCashOut(t *testing.T) {
 		g.New()
 		g.deck[1], g.deck[2] = 1, 1
 
-		g.Deal()
-		g.Deal()
+		g.DealX(2)
 
-    balBeforeCashOut := g.Balance()
+		balBeforeCashOut := g.Balance()
 		rowVal := 2
 
 		g.CashOut()
 
-    want := balBeforeCashOut + rowVal
+		want := balBeforeCashOut + rowVal
 		if g.Balance() != want {
 			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
 		}
@@ -185,95 +186,74 @@ func TestCashOut(t *testing.T) {
 		g := Game{}
 		g.New()
 		// Play a few rows
-		g.Deal()
-		g.Deal()
-		g.Deal()
+		g.DealX(3)
+
 		// Cash out and return to betting state
 		g.CashOut()
 
-    if g.State() != StateBetting {
-      t.Fatalf("cashing out should return state to betting, got %v", g.State())
-    }
+		if g.State() != StateBetting {
+			t.Fatalf("cashing out should return state to betting, got %v", g.State())
+		}
 	})
 
-  t.Run("round should stop and cash out after row 8 is played", func(t *testing.T) {
-    g := Game{}
-    g.New()
+	t.Run("round should stop and cash out after row 8 is played", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    for i := 0; i < 8; i++ {
-      g.Deal()
-    }
+		for i := 0; i < 8; i++ {
+			g.Deal()
+		}
 
-    defer func() {
-      if r := recover(); r != nil {
-        t.Errorf("should not try to deal 9th row")
-      }
-    }()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("should not try to deal 9th row")
+			}
+		}()
 
-    g.Deal()
+		g.Deal()
 
-    if g.State() != StateBetting {
-      t.Errorf("want state %d, got %d", StateBetting, g.State())
-    }
-  })
+		if g.State() != StateBetting {
+			t.Errorf("want state %d, got %d", StateBetting, g.State())
+		}
+	})
 
-  t.Run("CashOut() should do nothing if current row is 0", func(t *testing.T) {
-    g := Game{}
-    g.New()
+	t.Run("CashOut() should do nothing if current row is 0", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    defer func() {
-      if r := recover(); r != nil {
-        t.Fatalf("cashing out when tower is empty causes panic")
-      }
-    }()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("cashing out when tower is empty causes panic")
+			}
+		}()
 
-    g.CashOut()
-  })
+		g.CashOut()
+	})
 
-  t.Run("cashing out should reset deck, counts and tower", func(t *testing.T) {
-    g := Game{}
-    g.New()
+	t.Run("cashing out should reset deck, counts and tower", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    for i:=0;i<4;i++{
-      g.Deal()
-    }
+		for i := 0; i < 4; i++ {
+			g.Deal()
+		}
 
-    g.CashOut()
+		g.CashOut()
 
-    if len(g.deck) != 60 {
-      t.Error("deck was not reset")
-    }
+		assertGameReset(t, g)
+	})
 
-    if g.counts[0] != 4 {
-      t.Error("counts were not reset")
-    } else {
-      for v := 1; v <= 7; v++ {
-        if g.counts[v] != 8 {
-          t.Error("counts were not reset")
-          break
-        }
-      }
-    }
+	t.Run("set current row to 0", func(t *testing.T) {
+		g := Game{}
+		g.New()
 
-    for r := 0; r < 8; r++ {
-      if len(g.tower[r]) > 0 {
-        t.Error("tower was not reset")
-        break
-      }
-    }
-  })
+		g.Deal()
+		g.CashOut()
 
-  t.Run("set current row to 0", func(t *testing.T) {
-    g := Game{}
-    g.New()
-
-    g.Deal()
-    g.CashOut()
-
-    if g.curRow != 0 {
-      t.Fatalf("g.curRow wasn't reset to 0")
-    }
-  })
+		if g.curRow != 0 {
+			t.Fatalf("g.curRow wasn't reset to 0")
+		}
+	})
 }
 
 // These tests are retesting other functionality instead of just testing input. Increase complexity for purer tests?
@@ -282,6 +262,8 @@ func TestInput(t *testing.T) {
 	t.Run("at game start, z deals first two rows", func(t *testing.T) {
 		g := Game{}
 		g.New()
+
+		g.deck = safeDeck()
 
 		in := "z"
 		g.Input(in)
@@ -315,22 +297,182 @@ func TestInput(t *testing.T) {
 		g.New()
 		g.balance = 0
 
-		g.Deal()
-		g.Deal()
+		g.DealX(2)
 
 		rowVal := 0
 		for _, v := range g.tower[1] {
 			rowVal += v
 		}
 
-    balBeforeCashOut := g.Balance()
+		balBeforeCashOut := g.Balance()
 
 		in := "x"
 		g.Input(in)
 
-    want := balBeforeCashOut + rowVal
+		want := balBeforeCashOut + rowVal
 		if g.Balance() != want {
 			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
 		}
 	})
+
+	for _, in := range []string{"z", "x"} {
+		t.Run(fmt.Sprintf("after gameover, %s resets to betting state and empty tower", in), func(t *testing.T) {
+			g := Game{}
+			g.New()
+
+			g.GameOver()
+
+			g.Input(in)
+
+			if g.State() != StateBetting {
+				t.Fatalf("wrong game state, got %d, want %d", g.State(), StateBetting)
+			}
+
+			// Not working?
+			assertGameReset(t, g)
+		})
+	}
+}
+
+func TestBust(t *testing.T) {
+	assertGateUsed := func(t *testing.T, g Game) {
+		t.Helper()
+		if len(g.tower[0]) > 0 {
+			t.Fatalf("first row should be empty")
+		}
+	}
+
+	t.Run("leftmost card busts and replaced with gate", func(t *testing.T) {
+		g := Game{}
+		g.New()
+
+		g.deck = []int{
+			7,
+			1, 1,
+			1, 2, 2,
+		}
+
+		g.DealX(3)
+
+		if g.tower[2][0] != 7 {
+			t.Fatalf("gate card should replace burned card")
+		}
+
+		assertGateUsed(t, g)
+
+		if g.IsGameOver() {
+			t.Fatalf("game should continue")
+		}
+	})
+
+	t.Run("rightmost card busts and replaced with gate", func(t *testing.T) {
+		g := Game{}
+		g.New()
+
+		g.deck = []int{
+			7,
+			1, 1,
+			2, 2, 1,
+		}
+
+		g.DealX(3)
+
+		if g.tower[2][2] != 7 {
+			t.Fatalf("gate card should replace burned card")
+		}
+
+		assertGateUsed(t, g)
+
+		if g.IsGameOver() {
+			t.Fatalf("game should continue")
+		}
+	})
+
+	t.Run("middle card busts and replaced with gate, game continues", func(t *testing.T) {
+		g := Game{}
+		g.New()
+
+		g.deck = []int{
+			7,
+			1, 1,
+			2, 2, 2,
+			3, 2, 3, 3,
+		}
+
+		g.DealX(4)
+
+		if g.tower[3][1] != 7 {
+			t.Fatalf("gate card should replace burned card")
+		}
+
+		assertGateUsed(t, g)
+
+		if g.IsGameOver() {
+			t.Fatalf("game should continue")
+		}
+	})
+
+	t.Run("middle card busts and replaced with gate, game over", func(t *testing.T) {
+		g := Game{}
+		g.New()
+
+		g.deck = []int{
+			7,
+			1, 7,
+			2, 1, 2,
+		}
+
+		g.DealX(3)
+
+		if g.tower[2][1] != 7 {
+			t.Fatalf("gate card should replace burned card")
+		}
+
+		assertGateUsed(t, g)
+
+		if !g.IsGameOver() {
+			t.Fatalf("game should end")
+		}
+	})
+}
+
+// I think I need to simulate a full game at some point.
+// Maybe test the print methods also.
+
+func safeDeck() []int {
+	// create deck with no busts
+	deck := []int{}
+	for i := 0; i < 8; i++ {
+		for j := 0; j <= i; j++ {
+			deck = append(deck, i)
+		}
+	}
+	for i := len(deck); i < 60; i++ {
+		deck = append(deck, 7)
+	}
+	return deck
+}
+
+func assertGameReset(t *testing.T, g Game) {
+	if len(g.deck) != 60 {
+		t.Error("deck was not reset")
+	}
+
+	if g.counts[0] != 4 {
+		t.Error("counts were not reset")
+	} else {
+		for v := 1; v <= 7; v++ {
+			if g.counts[v] != 8 {
+				t.Error("counts were not reset")
+				break
+			}
+		}
+	}
+
+	for r := 0; r < 8; r++ {
+		if len(g.tower[r]) > 0 {
+			t.Error("tower was not reset")
+			break
+		}
+	}
 }

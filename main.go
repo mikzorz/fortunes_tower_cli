@@ -11,30 +11,35 @@ import (
 )
 
 const (
-  StateBetting = iota
-  StatePlaying
+	StateBetting = iota
+	StatePlaying
+	StateGameOver
 )
 
 // Game contains the deck and the tower
 type Game struct {
-	deck    []int
-	counts  map[int]int
-	tower   [][]int
-	curRow  int
-	balance int
-	in      *bufio.Scanner
-  state   int
-  wager   int
+	deck     []int
+	counts   map[int]int
+	tower    [][]int
+	curRow   int
+	balance  int
+	in       *bufio.Scanner
+	state    int
+	wager    int
+	gameover bool
 }
 
 // New() creates a new game
 func (g *Game) New() {
 	rand.Seed(time.Now().UnixNano())
-  g.NewDeckAndTower()
-  g.curRow=0
-  g.state=StateBetting
-  g.balance=300
-  g.wager=15
+	g.NewRound()
+	g.balance = 300
+	g.wager = 15
+}
+
+func (g *Game) NewRound() {
+	g.state = StateBetting
+	g.NewDeckAndTower()
 }
 
 // Set the deck, counts and tower to defaults
@@ -60,40 +65,101 @@ func (g *Game) NewDeckAndTower() {
 	g.deck = d
 
 	g.tower = make([][]int, 8)
+	g.curRow = 0
 }
 
 // Deal() deals the next row of cards
 func (g *Game) Deal() {
-  if g.curRow == 0 {
-    g.balance -= g.wager
-  }
-  if g.curRow < 8 {
-    g.state = StatePlaying
-    for i := 0; i < g.curRow+1; i++ {
-      drawnCard := g.deck[0]
-      g.deck = g.deck[1:] // ok because deck never empties completely
-      g.counts[drawnCard]--
-      g.tower[g.curRow] = append(g.tower[g.curRow], drawnCard)
-    }
-    g.curRow++
-  } else {
-    g.CashOut()
-  }
+	if g.curRow == 0 {
+		g.balance -= g.wager
+	}
+	if g.curRow < 8 {
+		g.state = StatePlaying
+		for i := 0; i <= g.curRow; i++ {
+			drawnCard := g.deck[0]
+			g.deck = g.deck[1:] // ok because deck never empties completely
+			g.counts[drawnCard]--
+			g.tower[g.curRow] = append(g.tower[g.curRow], drawnCard)
+		}
+
+		if g.curRow > 1 {
+			g.HandleBust()
+		}
+
+		g.curRow++
+	} else {
+		g.CashOut()
+	}
+}
+
+// DealX() repeates Deal() x times
+func (g *Game) DealX(x int) {
+	for i := 0; i < x; i++ {
+		g.Deal()
+	}
+}
+
+// HandleBust() checks for a bust. If there is, try to replace the first occurence with the gate card.
+// If gate doesn't exist, gameover.
+// Check for a bust again. If there is, gameover.
+func (g *Game) HandleBust() {
+	for i := 0; i < 2; i++ {
+		if bust, ci := g.IsBust(); bust {
+			if len(g.tower[0]) > 0 {
+				g.tower[g.curRow][ci] = g.tower[0][0]
+				g.tower[0] = []int{}
+			} else {
+				g.GameOver()
+			}
+		}
+	}
+}
+
+// IsBust() compares each card on the last dealt row with each card directly above it.
+// If they match, bust.
+func (g *Game) IsBust() (bool, int) {
+	for i, v1 := range g.tower[g.curRow] {
+		if i != len(g.tower[g.curRow])-1 {
+			// compare currow[i] with lastrow[i]
+			v2 := g.tower[g.curRow-1][i]
+			if v1 == v2 {
+				return true, i
+			}
+		}
+
+		if i != 0 {
+			// compare currow[i] with lastrow[i - 1]
+			v2 := g.tower[g.curRow-1][i-1]
+			if v1 == v2 {
+				return true, i
+			}
+		}
+	}
+
+	return false, 0
 }
 
 // CashOut() adds the sum of the last row to the player's balance.
 func (g *Game) CashOut() {
-  if g.curRow > 0 {
-    g.state = StateBetting
-    sum := 0
-    for _, v := range g.tower[g.curRow-1] {
-      sum += v
-    }
-    g.balance += sum
-    g.NewDeckAndTower()
-    g.curRow=0
-  } else {
-  }
+	if g.curRow > 0 {
+		g.state = StateBetting
+		sum := 0
+		for _, v := range g.tower[g.curRow-1] {
+			sum += v
+		}
+		g.balance += sum
+		g.NewDeckAndTower()
+		g.curRow = 0
+	}
+}
+
+// GameOver() ends the round without cashing out.
+func (g *Game) GameOver() {
+	g.state = StateGameOver
+}
+
+func (g *Game) IsGameOver() bool {
+	return g.State() == StateGameOver
 }
 
 // Input() reads and processes user input.
@@ -104,12 +170,20 @@ func (g *Game) Input(in string) {
 	in = strings.TrimSuffix(in, "\n")
 	switch in {
 	case "z":
-		if g.curRow == 0 {
+		if g.IsGameOver() {
+			g.NewRound()
+		} else {
+			if g.curRow == 0 {
+				g.Deal()
+			}
 			g.Deal()
 		}
-		g.Deal()
 	case "x":
-		g.CashOut()
+		if g.IsGameOver() {
+			g.NewRound()
+		} else {
+			g.CashOut()
+		}
 	}
 }
 
@@ -120,30 +194,35 @@ func (g *Game) Balance() int {
 
 // State() returns the current game state.
 func (g *Game) State() int {
-  return g.state
+	return g.state
 }
 
 // GetWager() returns the current wager.
 func (g *Game) GetWager() int {
-  return g.wager
+	return g.wager
 }
 
-// Print the current game state, with instructions
-func (g *Game) Print() {
+func (g *Game) PrintTower() {
 	for row := 0; row < g.curRow; row++ {
 		fmt.Println(strings.Repeat(" ", 8-row), g.tower[row])
 	}
 
-  fmt.Println()
+	fmt.Println()
+}
 
-  switch g.State() {
-  case StateBetting:
-	  fmt.Println(`Type "z" to bet 15`)
-  case StatePlaying:
-	  fmt.Println(`"z" to deal the next row, "x" to cash out`)
-  }
+// Print the current game state, with instructions
+func (g *Game) PrintText() {
 
-  fmt.Printf("Money: %d\n", g.Balance())
+	switch g.State() {
+	case StateBetting:
+		fmt.Println(`Type "z" to bet 15`)
+	case StatePlaying:
+		fmt.Println(`"z" to deal the next row, "x" to cash out`)
+	case StateGameOver:
+		fmt.Println(`BUST! "z" or "x" to start a new round`)
+	}
+
+	fmt.Printf("Money: %d\n", g.Balance())
 }
 
 func main() {
@@ -151,9 +230,10 @@ func main() {
 	g.New()
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		g.Print()
+		g.PrintText()
 		in, _ := reader.ReadString('\n')
 		g.Input(in)
+		g.PrintTower()
 		time.Sleep(time.Second / 5)
 		// if g.GameOver() {
 		// 	break
