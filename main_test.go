@@ -298,7 +298,7 @@ func TestInput(t *testing.T) {
 		in := "x"
 		g.Input(in)
 
-		want := balBeforecashOut + rowVal
+		want := balBeforecashOut + rowVal * g.multiplier
 		if g.Balance() != want {
 			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
 		}
@@ -431,7 +431,7 @@ func TestMultiplier(t *testing.T) {
 		}
 	})
 
-	t.Run("row with only one card type should multiply the multiplier by the amount of cards in row", func(t *testing.T) {
+	t.Run("multipliers should compound", func(t *testing.T) {
 		// put double 1 in second row of deck, multiplier should become x2.
 		g := NewGame()
 		g.tower[1] = []int{1, 1}
@@ -451,6 +451,17 @@ func TestMultiplier(t *testing.T) {
 			t.Fatalf("multiplier should be 6, got %d", g.multiplier)
 		}
 	})
+
+  t.Run("multiplier should increase even after gate is used", func(t *testing.T) {
+    g := NewGame()
+    g.deck = []int{2,1,7,1,2,2}
+
+    g.dealX(3)
+
+    if g.multiplier != 3 {
+      t.Fatalf("multiplier should be %d, got %d", 3, g.multiplier)
+    }
+  })
 
 	t.Run("deal() and cashOut() use multiplier", func(t *testing.T) {
 		g := NewGame()
