@@ -18,27 +18,32 @@ const (
 
 // Game contains the deck and the tower
 type Game struct {
-	deck     []int
-	counts   map[int]int
-	tower    [][]int
-	curRow   int
-	balance  int
-	in       *bufio.Scanner
-	state    int
-	wager    int
-	gameover bool
+	deck       []int
+	counts     map[int]int
+	tower      [][]int
+	curRow     int
+	balance    int
+	in         *bufio.Scanner
+	state      int
+	wager      int
+	multiplier int
+	gameover   bool
 }
 
-// New() creates a new game
-func (g *Game) New() {
+// NewGame() creates a new game with a fresh deck, tower and money
+func NewGame() Game {
 	rand.Seed(time.Now().UnixNano())
+
+	g := Game{}
 	g.NewRound()
 	g.balance = 300
 	g.wager = 15
+	return g
 }
 
 func (g *Game) NewRound() {
 	g.state = StateBetting
+	g.multiplier = 1
 	g.NewDeckAndTower()
 }
 
@@ -68,10 +73,11 @@ func (g *Game) NewDeckAndTower() {
 	g.curRow = 0
 }
 
-// Deal() deals the next row of cards
-func (g *Game) Deal() {
+// deal() deals the next row of cards
+func (g *Game) deal() {
 	if g.curRow == 0 {
 		g.balance -= g.wager
+		g.multiplier *= g.wager / 15
 	}
 	if g.curRow < 8 {
 		g.state = StatePlaying
@@ -83,33 +89,34 @@ func (g *Game) Deal() {
 		}
 
 		if g.curRow > 1 {
-			g.HandleBust()
+			g.handleBust()
 		}
+		g.checkMulti()
 
 		g.curRow++
 	} else {
-		g.CashOut()
+		g.cashOut()
 	}
 }
 
-// DealX() repeates Deal() x times
-func (g *Game) DealX(x int) {
+// dealX() repeates deal() x times
+func (g *Game) dealX(x int) {
 	for i := 0; i < x; i++ {
-		g.Deal()
+		g.deal()
 	}
 }
 
-// HandleBust() checks for a bust. If there is, try to replace the first occurence with the gate card.
+// handleBust() checks for a bust. If there is, try to replace the first occurence with the gate card.
 // If gate doesn't exist, gameover.
 // Check for a bust again. If there is, gameover.
-func (g *Game) HandleBust() {
+func (g *Game) handleBust() {
 	for i := 0; i < 2; i++ {
 		if bust, ci := g.IsBust(); bust {
 			if len(g.tower[0]) > 0 {
 				g.tower[g.curRow][ci] = g.tower[0][0]
 				g.tower[0] = []int{}
 			} else {
-				g.GameOver()
+				g.gameOver()
 			}
 		}
 	}
@@ -139,22 +146,32 @@ func (g *Game) IsBust() (bool, int) {
 	return false, 0
 }
 
-// CashOut() adds the sum of the last row to the player's balance.
-func (g *Game) CashOut() {
+func (g *Game) checkMulti() {
+	cardsToCheck := g.tower[g.curRow]
+	for i := 0; i < len(cardsToCheck)-1; i++ {
+		if cardsToCheck[i] != cardsToCheck[i+1] {
+			return
+		}
+	}
+	g.multiplier *= len(cardsToCheck)
+}
+
+// cashOut() adds the sum of the last row to the player's balance.
+func (g *Game) cashOut() {
 	if g.curRow > 0 {
 		g.state = StateBetting
 		sum := 0
 		for _, v := range g.tower[g.curRow-1] {
 			sum += v
 		}
-		g.balance += sum
+		g.balance += sum * g.multiplier
 		g.NewDeckAndTower()
 		g.curRow = 0
 	}
 }
 
-// GameOver() ends the round without cashing out.
-func (g *Game) GameOver() {
+// gameOver() ends the round without cashing out.
+func (g *Game) gameOver() {
 	g.state = StateGameOver
 }
 
@@ -173,16 +190,17 @@ func (g *Game) Input(in string) {
 		if g.IsGameOver() {
 			g.NewRound()
 		} else {
+			// TODO: move this check out of Input() and add it to deal().
 			if g.curRow == 0 {
-				g.Deal()
+				g.deal()
 			}
-			g.Deal()
+			g.deal()
 		}
 	case "x":
 		if g.IsGameOver() {
 			g.NewRound()
 		} else {
-			g.CashOut()
+			g.cashOut()
 		}
 	}
 }
@@ -200,6 +218,10 @@ func (g *Game) State() int {
 // GetWager() returns the current wager.
 func (g *Game) GetWager() int {
 	return g.wager
+}
+
+func (g *Game) SetWager(w int) {
+	g.wager = w
 }
 
 func (g *Game) PrintTower() {
@@ -226,8 +248,7 @@ func (g *Game) PrintText() {
 }
 
 func main() {
-	g := Game{}
-	g.New()
+	g := NewGame()
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		g.PrintText()
