@@ -245,6 +245,32 @@ func TestCashOut(t *testing.T) {
 			t.Fatalf("g.curRow wasn't reset to 0")
 		}
 	})
+
+	t.Run("if last row is played without using gate, JACKPOT", func(t *testing.T) {
+		g := NewGame()
+		g.deck = deckNoMultis()
+
+    t.Log(g.deck)
+		g.dealX(8)
+    t.Log(g.tower)
+
+		want := 0
+		for i := 1; i <= 7; i++ {
+			for _, v := range g.tower[i] {
+				want += v
+			}
+		}
+
+		balBefore := g.Balance()
+		g.cashOut()
+		balAfter := g.Balance()
+
+		diff := balAfter - balBefore
+
+		if diff != want {
+			t.Fatalf("last row did not give jackpot reward, got %d, want %d", diff, want)
+		}
+	})
 }
 
 // These tests are retesting other functionality instead of just testing input. Increase complexity for purer tests?
@@ -534,6 +560,20 @@ func safeDeck() []int {
 		deck = append(deck, 7)
 	}
 	return deck
+}
+
+func deckNoMultis() []int {
+
+	return []int{
+		0,
+		1, 2,
+		3, 4, 5,
+		1, 1, 7, 7,
+		2, 2, 2, 6, 6,
+		3, 3, 3, 4, 4, 4,
+		2, 2, 2, 2, 7, 7, 7,
+		5, 5, 5, 5, 5, 5, 5, 1,
+	}
 }
 
 func assertGameReset(t *testing.T, g Game) {

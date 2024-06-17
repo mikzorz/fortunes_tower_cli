@@ -169,6 +169,13 @@ func (g *Game) cashOut() {
 		for _, v := range g.tower[g.curRow-1] {
 			sum += v
 		}
+    if g.curRow == 8 {
+      for r := g.curRow-2; r > 0; r-- {
+        for _, v := range g.tower[r] {
+          sum += v
+        }
+      }
+    }
 		g.balance += sum * g.multiplier
 		g.NewDeckAndTower()
 		g.curRow = 0
