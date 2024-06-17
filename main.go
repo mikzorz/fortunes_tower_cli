@@ -123,9 +123,14 @@ func (g *Game) handleBust() {
 }
 
 // IsBust() compares each card on the last dealt row with each card directly above it.
-// If they match, bust.
+// If they match, return true and the index of the bust card.
+// Else, return false, 0
 func (g *Game) IsBust() (bool, int) {
 	for i, v1 := range g.tower[g.curRow] {
+		if v1 == 0 {
+			return false, 0
+		}
+
 		if i != len(g.tower[g.curRow])-1 {
 			// compare currow[i] with lastrow[i]
 			v2 := g.tower[g.curRow-1][i]

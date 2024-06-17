@@ -298,7 +298,7 @@ func TestInput(t *testing.T) {
 		in := "x"
 		g.Input(in)
 
-		want := balBeforecashOut + rowVal * g.multiplier
+		want := balBeforecashOut + rowVal*g.multiplier
 		if g.Balance() != want {
 			t.Errorf("balance after cashing out should be %d, got %d", want, g.Balance())
 		}
@@ -418,6 +418,40 @@ func TestBust(t *testing.T) {
 			t.Fatalf("game should end")
 		}
 	})
+
+	t.Run("don't bust if row contains hero", func(t *testing.T) {
+		t.Run("hero dealt directly from the deck", func(t *testing.T) {
+			g := NewGame()
+			g.deck = []int{1, 1, 2, 0, 2, 3}
+
+			g.dealX(3)
+
+			// check that player hasnt busted
+			if bust, _ := g.IsBust(); bust {
+				t.Fatalf("should not have bust")
+			}
+			// check that gate wasn't used
+			if len(g.tower[0]) != 1 {
+				t.Fatalf("should not have used gate card")
+			}
+		})
+
+		t.Run("hero saves a bust row", func(t *testing.T) {
+			g := NewGame()
+			g.deck = []int{0, 1, 2, 1, 2, 3}
+
+			g.dealX(3)
+
+			// check that player hasnt bust
+			if bust, _ := g.IsBust(); bust {
+				t.Fatalf("should not have bust")
+			}
+			// check that gate was used
+			if len(g.tower[0]) != 0 {
+				t.Fatalf("should have used gate card")
+			}
+		})
+	})
 }
 
 func TestMultiplier(t *testing.T) {
@@ -452,16 +486,16 @@ func TestMultiplier(t *testing.T) {
 		}
 	})
 
-  t.Run("multiplier should increase even after gate is used", func(t *testing.T) {
-    g := NewGame()
-    g.deck = []int{2,1,7,1,2,2}
+	t.Run("multiplier should increase even after gate is used", func(t *testing.T) {
+		g := NewGame()
+		g.deck = []int{2, 1, 7, 1, 2, 2}
 
-    g.dealX(3)
+		g.dealX(3)
 
-    if g.multiplier != 3 {
-      t.Fatalf("multiplier should be %d, got %d", 3, g.multiplier)
-    }
-  })
+		if g.multiplier != 3 {
+			t.Fatalf("multiplier should be %d, got %d", 3, g.multiplier)
+		}
+	})
 
 	t.Run("deal() and cashOut() use multiplier", func(t *testing.T) {
 		g := NewGame()
