@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	_ "strings"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -250,9 +253,9 @@ func TestCashOut(t *testing.T) {
 		g := NewGame()
 		g.deck = deckNoMultis()
 
-    t.Log(g.deck)
+		t.Log(g.deck)
 		g.dealX(8)
-    t.Log(g.tower)
+		t.Log(g.tower)
 
 		want := 0
 		for i := 1; i <= 7; i++ {
@@ -271,6 +274,17 @@ func TestCashOut(t *testing.T) {
 			t.Fatalf("last row did not give jackpot reward, got %d, want %d", diff, want)
 		}
 	})
+
+}
+
+func TestGetRowValue(t *testing.T) {
+	g := NewGame()
+	g.deck = []int{1, 1, 2}
+	g.dealX(2)
+
+	if g.getRowValue(1) != 3 {
+		t.Fatalf("getRowValue() returned %d, want %d", g.getRowValue(1), 3)
+	}
 }
 
 // These tests are retesting other functionality instead of just testing input. Increase complexity for purer tests?
@@ -545,8 +559,83 @@ func TestMultiplier(t *testing.T) {
 	})
 }
 
-// I think I need to simulate a full game at some point.
-// Maybe test the print methods also.
+func TestPrinting(t *testing.T) {
+	t.Run("Game.out should default to stdout", func(t *testing.T) {
+		g := NewGame()
+		if g.out != os.Stdout {
+			t.Fatalf("g.out should be os.Stdout, got %v", g.out)
+		}
+	})
+
+	t.Run("gate card should be shown as [?] until revealed", func(t *testing.T) {
+		g := NewGame()
+		g.deck = []int{1, 2, 3, 2, 4, 5}
+
+		out := &bytes.Buffer{}
+		g.out = out
+
+		g.deal()
+
+		g.PrintRow(0)
+		got := strings.TrimSpace(out.String())
+		want := "[?]"
+		if got != want {
+			t.Fatalf("gate card should be obscured, want %s, got %s", want, got)
+		}
+
+		out.Reset()
+		g.dealX(2)
+		g.PrintRow(0)
+		got = strings.TrimSpace(out.String())
+		want = "[ ]"
+		if got != want {
+			t.Fatalf("gate card should be blank, want %s, got %s", want, got)
+		}
+	})
+
+	t.Run("each row should end with its value", func(t *testing.T) {
+		g := NewGame()
+		out := &bytes.Buffer{}
+		g.out = out
+
+		g.dealX(2)
+		g.PrintRow(1)
+
+		rowVal := g.getRowValue(1)
+
+		txt := out.String()
+		txt = txt[len(txt)-(2+lenOfNum(rowVal))-1 : len(txt)-1] // assumes value is enclosed in 1 delimiter each side and ends with \n
+
+		want := fmt.Sprintf("(%d)", rowVal)
+		if txt != want {
+			t.Fatalf("row value should show %s, got %s", want, txt)
+		}
+	})
+
+	t.Run("jackpot should show jackpot value", func(t *testing.T) {
+		g := NewGame()
+		g.deck = deckNoMultis()
+		out := &bytes.Buffer{}
+		g.out = out
+
+		g.dealX(8)
+		g.PrintRow(7)
+
+		jackpotVal := g.getJackpotValue()
+
+		txt := out.String()
+		txt = txt[len(txt)-(2+lenOfNum(jackpotVal))-1 : len(txt)-1] // assumes value is enclosed in 1 delimiter each side and ends with \n
+
+		want := fmt.Sprintf("(%d)", jackpotVal)
+		if txt != want {
+			t.Fatalf("row value should show %s, got %s", want, txt)
+		}
+	})
+}
+
+func lenOfNum(i int) int {
+	return len(strconv.Itoa(i))
+}
 
 func safeDeck() []int {
 	// create deck with no busts

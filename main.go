@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	_ "io"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -24,6 +24,7 @@ type Game struct {
 	curRow     int
 	balance    int
 	in         *bufio.Scanner
+	out        io.Writer
 	state      int
 	wager      int
 	multiplier int
@@ -38,6 +39,7 @@ func NewGame() Game {
 	g.NewRound()
 	g.balance = 300
 	g.wager = 15
+	g.out = os.Stdout
 	return g
 }
 
@@ -161,21 +163,32 @@ func (g *Game) checkMulti() {
 	g.multiplier *= len(cardsToCheck)
 }
 
+func (g *Game) getRowValue(row int) int {
+	rv := 0
+	for _, v := range g.tower[row] {
+		rv += v
+	}
+	return rv
+}
+
+func (g *Game) getJackpotValue() int {
+	sum := 0
+	for r := g.curRow - 1; r > 0; r-- {
+		sum += g.getRowValue(r)
+	}
+	return sum
+}
+
 // cashOut() adds the sum of the last row to the player's balance.
 func (g *Game) cashOut() {
 	if g.curRow > 0 {
 		g.state = StateBetting
 		sum := 0
-		for _, v := range g.tower[g.curRow-1] {
-			sum += v
+		if g.curRow == 8 && len(g.tower[0]) == 1 {
+			sum = g.getJackpotValue()
+		} else {
+			sum = g.getRowValue(g.curRow - 1)
 		}
-    if g.curRow == 8 {
-      for r := g.curRow-2; r > 0; r-- {
-        for _, v := range g.tower[r] {
-          sum += v
-        }
-      }
-    }
 		g.balance += sum * g.multiplier
 		g.NewDeckAndTower()
 		g.curRow = 0
@@ -194,7 +207,6 @@ func (g *Game) IsGameOver() bool {
 // Input() reads and processes user input.
 // z deals a new row/confirms
 // x cashes out at the current row if the player has not bust
-// func (g *Game) Input(in io.Reader) {
 func (g *Game) Input(in string) {
 	in = strings.TrimSuffix(in, "\n")
 	switch in {
@@ -202,7 +214,6 @@ func (g *Game) Input(in string) {
 		if g.IsGameOver() {
 			g.NewRound()
 		} else {
-			// TODO: move this check out of Input() and add it to deal().
 			if g.curRow == 0 {
 				g.deal()
 			}
@@ -236,9 +247,29 @@ func (g *Game) SetWager(w int) {
 	g.wager = w
 }
 
+func (g *Game) PrintRow(row int) {
+	spacing := strings.Repeat(" ", 8-row)
+	if row == 0 {
+		if len(g.tower[0]) == 0 {
+			fmt.Fprint(g.out, spacing, "[ ]")
+		} else {
+			fmt.Fprint(g.out, spacing, "[?]")
+		}
+	} else {
+		rv := 0
+		if g.curRow == 8 && len(g.tower[0]) == 1 {
+			rv = g.getJackpotValue()
+		} else {
+			rv = g.getRowValue(row)
+		}
+		fmt.Fprint(g.out, spacing, g.tower[row], fmt.Sprintf("(%d)", rv))
+	}
+	fmt.Fprint(g.out, "\n")
+}
+
 func (g *Game) PrintTower() {
 	for row := 0; row < g.curRow; row++ {
-		fmt.Println(strings.Repeat(" ", 8-row), g.tower[row])
+		g.PrintRow(row)
 	}
 
 	fmt.Println()
@@ -246,6 +277,7 @@ func (g *Game) PrintTower() {
 
 // Print the current game state, with instructions
 func (g *Game) PrintText() {
+	// fmt.Printf("\033[2K\r") -- Use this to replace rows of text (untested)
 
 	switch g.State() {
 	case StateBetting:
