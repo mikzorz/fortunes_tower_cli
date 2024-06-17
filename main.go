@@ -262,7 +262,7 @@ func (g *Game) PrintRow(row int) {
 		} else {
 			rv = g.getRowValue(row)
 		}
-		fmt.Fprint(g.out, spacing, g.tower[row], fmt.Sprintf("(%d)", rv))
+		fmt.Fprint(g.out, spacing, g.tower[row], spacing, fmt.Sprintf("(%d)", rv))
 	}
 	fmt.Fprint(g.out, "\n")
 }
@@ -278,7 +278,7 @@ func (g *Game) PrintTower() {
 // Print the current game state, with instructions
 func (g *Game) PrintText() {
 	// fmt.Printf("\033[2K\r") -- Use this to replace rows of text (untested)
-
+  // fmt.Print("\033[u\033[K") // restore the cursor position and clear the line
 	switch g.State() {
 	case StateBetting:
 		fmt.Println(`Type "z" to bet 15`)
@@ -295,6 +295,7 @@ func main() {
 	g := NewGame()
 	reader := bufio.NewReader(os.Stdin)
 	for {
+    // fmt.Print("\033[s") // save the cursor position
 		g.PrintText()
 		in, _ := reader.ReadString('\n')
 		g.Input(in)

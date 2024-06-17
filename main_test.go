@@ -631,6 +631,9 @@ func TestPrinting(t *testing.T) {
 			t.Fatalf("row value should show %s, got %s", want, txt)
 		}
 	})
+
+  // test the printed instructions and money
+  // what if i replace lines in place? will that affect tests?
 }
 
 func lenOfNum(i int) int {
