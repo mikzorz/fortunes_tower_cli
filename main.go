@@ -141,6 +141,8 @@ func (g *Game) handleBust() bool {
 // Else, return false, 0
 func (g *Game) IsBust() (bool, int) {
   curRow := g.curRow
+  bust := false
+  bustIdx := 0
 	for cardIndex, cardVal1 := range g.tower[curRow] {
 		if cardVal1 == 0 {
 			return false, 0
@@ -150,7 +152,8 @@ func (g *Game) IsBust() (bool, int) {
 			// compare currow[cardIndex] with lastrow[cardIndex]
 			cardVal2 := g.tower[curRow-1][cardIndex]
 			if cardVal1 == cardVal2 {
-				return true, cardIndex
+        bust = true
+        bustIdx = cardIndex
 			}
 		}
 
@@ -158,12 +161,13 @@ func (g *Game) IsBust() (bool, int) {
 			// compare currow[cardIndex] with lastrow[i - 1]
 			cardVal2 := g.tower[curRow-1][cardIndex-1]
 			if cardVal1 == cardVal2 {
-				return true, cardIndex
+        bust = true
+        bustIdx = cardIndex
 			}
 		}
 	}
 
-	return false, 0
+	return bust, bustIdx
 }
 
 func (g *Game) checkMulti() {

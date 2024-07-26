@@ -322,6 +322,7 @@ func TestInput(t *testing.T) {
 		}
 	})
 
+  // TODO, this test sometimes finds an error (probably because of random deck)
 	t.Run("after first deal, x cashes out", func(t *testing.T) {
 		g := NewGame()
 		g.balance = 0
@@ -499,6 +500,19 @@ func TestBust(t *testing.T) {
       g.deck[28] = 6 // 7th row is all 6s, this would cause bust without hero
       g.deck[29] = 0 // the hero card
       g.dealX(8)
+
+      if bust, _ := g.IsBust(); bust {
+        t.Fatalf("should not have bust")
+      }
+    })
+
+    t.Run("hero should save no matter its position in the row", func(t *testing.T) {
+      g := NewGame()
+      g.deck = safeDeck()
+      g.deck[6] = 2 // bust, should be saved by hero
+      g.deck[7] = 0
+
+      g.dealX(4)
 
       if bust, _ := g.IsBust(); bust {
         t.Fatalf("should not have bust")
