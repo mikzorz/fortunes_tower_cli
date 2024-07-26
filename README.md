@@ -14,3 +14,8 @@
 - If you reach the bottom of the tower (8th row) without using the Gate card, the final score for that round is equal to the value of ALL cards in the tower.
 - If all cards in a row have the same value (including Hero cards), the final score is multiplied by the amount of cards in that row.
 - The prize is multiplied by the bet / 15.
+
+
+BUG
+
+row multiplier doesn't reset between games

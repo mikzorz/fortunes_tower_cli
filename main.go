@@ -14,6 +14,8 @@ const (
 	StateBetting = iota
 	StatePlaying
 	StateGameOver
+
+  maxRows = 8
 )
 
 // Game contains the deck and the tower
@@ -71,7 +73,7 @@ func (g *Game) NewDeckAndTower() {
 	})
 	g.deck = d
 
-	g.tower = make([][]int, 8)
+	g.tower = make([][]int, maxRows)
 	g.curRow = 0
 }
 
@@ -81,7 +83,7 @@ func (g *Game) deal() {
 		g.balance -= g.wager
 		g.multiplier *= g.wager / 15
 	}
-	if g.curRow < 8 {
+	if !g.IsGameOver() {
 		g.state = StatePlaying
 		for i := 0; i <= g.curRow; i++ {
 			drawnCard := g.deck[0]
@@ -91,11 +93,17 @@ func (g *Game) deal() {
 		}
 
 		if g.curRow > 1 {
-			g.handleBust()
+      if bust := g.handleBust(); bust {
+        return
+      }
 		}
 		g.checkMulti()
 
-		g.curRow++
+    if g.curRow < maxRows-1 {
+		  g.curRow++
+    } else {
+      g.gameOver()
+    }
 	} else {
 		g.cashOut()
 	}
@@ -109,9 +117,10 @@ func (g *Game) dealX(x int) {
 }
 
 // handleBust() checks for a bust. If there is, try to replace the first occurence with the gate card.
-// If gate doesn't exist, gameover.
-// Check for a bust again. If there is, gameover.
-func (g *Game) handleBust() {
+// If gate doesn't exist, gameover, return true.
+// Check for a bust again. If there is, gameover, return true.
+// Else, return false
+func (g *Game) handleBust() bool {
 	for i := 0; i < 2; i++ {
 		if bust, ci := g.IsBust(); bust {
 			if len(g.tower[0]) > 0 {
@@ -119,33 +128,36 @@ func (g *Game) handleBust() {
 				g.tower[0] = []int{}
 			} else {
 				g.gameOver()
+        return true
 			}
 		}
 	}
+  return false
 }
 
 // IsBust() compares each card on the last dealt row with each card directly above it.
 // If they match, return true and the index of the bust card.
 // Else, return false, 0
 func (g *Game) IsBust() (bool, int) {
-	for i, v1 := range g.tower[g.curRow] {
-		if v1 == 0 {
+  curRow := g.curRow
+	for cardIndex, cardVal1 := range g.tower[curRow] {
+		if cardVal1 == 0 {
 			return false, 0
 		}
 
-		if i != len(g.tower[g.curRow])-1 {
-			// compare currow[i] with lastrow[i]
-			v2 := g.tower[g.curRow-1][i]
-			if v1 == v2 {
-				return true, i
+		if cardIndex != len(g.tower[curRow])-1 {
+			// compare currow[cardIndex] with lastrow[cardIndex]
+			cardVal2 := g.tower[curRow-1][cardIndex]
+			if cardVal1 == cardVal2 {
+				return true, cardIndex
 			}
 		}
 
-		if i != 0 {
-			// compare currow[i] with lastrow[i - 1]
-			v2 := g.tower[g.curRow-1][i-1]
-			if v1 == v2 {
-				return true, i
+		if cardIndex != 0 {
+			// compare currow[cardIndex] with lastrow[i - 1]
+			cardVal2 := g.tower[curRow-1][cardIndex-1]
+			if cardVal1 == cardVal2 {
+				return true, cardIndex
 			}
 		}
 	}
@@ -173,7 +185,7 @@ func (g *Game) getRowValue(row int) int {
 
 func (g *Game) getJackpotValue() int {
 	sum := 0
-	for r := g.curRow - 1; r > 0; r-- {
+	for r := maxRows-1; r > 0; r-- {
 		sum += g.getRowValue(r)
 	}
 	return sum
@@ -184,7 +196,7 @@ func (g *Game) cashOut() {
 	if g.curRow > 0 {
 		g.state = StateBetting
 		sum := 0
-		if g.curRow == 8 && len(g.tower[0]) == 1 {
+		if g.curRow == 7 && len(g.tower[7]) == 8 && len(g.tower[0]) == 1 {
 			sum = g.getJackpotValue()
 		} else {
 			sum = g.getRowValue(g.curRow - 1)
@@ -195,7 +207,7 @@ func (g *Game) cashOut() {
 	}
 }
 
-// gameOver() ends the round without cashing out.
+// gameOver() sets game state to StateGameOver.
 func (g *Game) gameOver() {
 	g.state = StateGameOver
 }
@@ -257,7 +269,7 @@ func (g *Game) PrintRow(row int) {
 		}
 	} else {
 		rv := 0
-		if g.curRow == 8 && len(g.tower[0]) == 1 {
+		if g.curRow == 7 && len(g.tower[7]) == 8 && len(g.tower[0]) == 1 {
 			rv = g.getJackpotValue()
 		} else {
 			rv = g.getRowValue(row)
@@ -271,6 +283,9 @@ func (g *Game) PrintTower() {
 	for row := 0; row < g.curRow; row++ {
 		g.PrintRow(row)
 	}
+  if g.IsGameOver() {
+    g.PrintRow(g.curRow)
+  }
 
 	fmt.Println()
 }

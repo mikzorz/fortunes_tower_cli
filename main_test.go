@@ -194,12 +194,11 @@ func TestCashOut(t *testing.T) {
 		}
 	})
 
-	t.Run("round should stop and cash out after row 8 is played", func(t *testing.T) {
+	t.Run("round should stop and cash out after last row is played", func(t *testing.T) {
 		g := NewGame()
+    g.deck = safeDeck()
 
-		for i := 0; i < 8; i++ {
-			g.deal()
-		}
+		g.dealX(8)
 
 		defer func() {
 			if r := recover(); r != nil {
@@ -476,7 +475,7 @@ func TestBust(t *testing.T) {
 			}
 		})
 
-		t.Run("hero saves a bust row", func(t *testing.T) {
+		t.Run("hero gate card saves a bust row", func(t *testing.T) {
 			g := NewGame()
 			g.deck = []int{0, 1, 2, 1, 2, 3}
 
@@ -491,6 +490,19 @@ func TestBust(t *testing.T) {
 				t.Fatalf("should have used gate card")
 			}
 		})
+
+    t.Run("hero should save last row from bust", func(t *testing.T) {
+      g := NewGame()
+      g.deck = safeDeck()
+      g.deck[0] = 1 // hero will be dealt as a row card
+      g.deck[28] = 6 // 7th row is all 6s, this would cause bust without hero
+      g.deck[29] = 0 // the hero card
+      g.dealX(8)
+
+      if bust, _ := g.IsBust(); bust {
+        t.Fatalf("should not have bust")
+      }
+    })
 	})
 }
 
@@ -631,6 +643,27 @@ func TestPrinting(t *testing.T) {
 			t.Fatalf("row value should show %s, got %s", want, txt)
 		}
 	})
+
+  t.Run("last line should print after busting and not being saved by hero gate", func(t *testing.T) {
+    g := NewGame()
+    g.deck = safeDeck()
+    g.deck[0] = 1
+    g.deck[4] = 1 // bust
+    out := &bytes.Buffer{}
+    g.out = out
+
+    g.dealX(3)
+    g.PrintTower()
+    // check last row of out
+    txt := out.String()
+    // get last row
+    rows := strings.Split(txt, "\n")
+    lastTowerRow := rows[len(rows)-2] // last row is an empty line for spacing
+
+    if !strings.Contains(lastTowerRow, "[2 1 2]") {
+      t.Fatalf("last row of tower should contain [2 1 2], got %s", lastTowerRow)
+    }
+  })
 
   // test the printed instructions and money
   // what if i replace lines in place? will that affect tests?
