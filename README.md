@@ -19,6 +19,7 @@
 
 todo
 
+- BUG: some tests do not use predetermined decks, occasionally returns an error
 - allow player to change wager (for accuracy)
 - add other decks from F2 (accuracy, but not important to me)
 - change printing to replace, not append (nice to have)
