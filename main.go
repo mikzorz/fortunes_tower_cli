@@ -49,6 +49,7 @@ func (g *Game) NewRound() {
 	g.state = StateBetting
 	g.multiplier = 1
 	g.NewDeckAndTower()
+  g.curRow = 0
 }
 
 // Set the deck, counts and tower to defaults
@@ -194,7 +195,6 @@ func (g *Game) getJackpotValue() int {
 // cashOut() adds the sum of the last row to the player's balance.
 func (g *Game) cashOut() {
 	if g.curRow > 0 {
-		g.state = StateBetting
 		sum := 0
 		if g.curRow == 7 && len(g.tower[7]) == 8 && len(g.tower[0]) == 1 {
 			sum = g.getJackpotValue()
@@ -202,8 +202,7 @@ func (g *Game) cashOut() {
 			sum = g.getRowValue(g.curRow - 1)
 		}
 		g.balance += sum * g.multiplier
-		g.NewDeckAndTower()
-		g.curRow = 0
+    g.NewRound()
 	}
 }
 

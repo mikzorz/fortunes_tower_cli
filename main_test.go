@@ -225,8 +225,9 @@ func TestCashOut(t *testing.T) {
 		g.cashOut()
 	})
 
-	t.Run("cashing out should reset deck, counts and tower", func(t *testing.T) {
+	t.Run("cashing out should reset deck, counts, multiplier and tower", func(t *testing.T) {
 		g := NewGame()
+    g.deck[1], g.deck[2] = 1, 1
 
 		for i := 0; i < 4; i++ {
 			g.deal()
@@ -702,6 +703,7 @@ func deckNoMultis() []int {
 }
 
 func assertGameReset(t *testing.T, g Game) {
+  t.Helper()
 	if len(g.deck) != 60 {
 		t.Error("deck was not reset")
 	}
@@ -723,4 +725,8 @@ func assertGameReset(t *testing.T, g Game) {
 			break
 		}
 	}
+
+  if g.multiplier != 1 {
+    t.Error("multiplier was not reset")
+  }
 }
