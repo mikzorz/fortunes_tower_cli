@@ -16,6 +16,12 @@
 - The prize is multiplied by the bet / 15.
 
 
-BUG
 
-row multiplier doesn't reset between games
+todo
+
+- allow player to change wager (for accuracy)
+- add other decks from F2 (accuracy, but not important to me)
+- change printing to replace, not append (nice to have)
+- custom tower sizes? (n2h)
+- colours? (n2h)
+- make code more nicerer (custom types, methods for read/writing to/from tower etc)
